@@ -2,6 +2,17 @@
 
 A desktop application built with Electron that lets you manage and launch multiple Google Chrome profiles simultaneously, tiled side-by-side on your screen.
 
+## Download
+
+**[Download the latest release](https://github.com/joymadhu49/chrome-profile-manager/releases/latest)**
+
+| File | Description |
+|------|-------------|
+| **ChromeProfileManager.exe** | Portable — just download and run, no installation needed |
+| **Chrome Profile Manager Setup 1.0.0.exe** | Windows installer with Start Menu shortcut |
+
+> **Note:** Windows SmartScreen may show a warning on first launch since the app is not code-signed. Click **"More info"** then **"Run anyway"** to proceed.
+
 ## Features
 
 - **Multi-profile launch** - Select any combination of Chrome profiles and launch them all at once
@@ -16,17 +27,17 @@ A desktop application built with Electron that lets you manage and launch multip
 
 ## Requirements
 
-- **Windows 10/11** (primary platform; macOS/Linux paths are defined but untested)
+- **Windows 10 or 11**
 - **Google Chrome** installed in a standard location
-- **Node.js** 18 or later
-- **npm** 9 or later
 
-## Getting Started
+## For Developers
+
+If you want to modify the source code or build from source, you'll also need **Node.js 18+** and **npm 9+**.
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/chrome-profile-manager.git
+git clone https://github.com/joymadhu49/chrome-profile-manager.git
 cd chrome-profile-manager
 ```
 
