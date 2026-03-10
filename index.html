@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome Profile Manager</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #11182d;
+      --panel-2: #18223b;
+      --panel-3: #1d2947;
+      --text: #edf2ff;
+      --muted: #9aa7c7;
+      --line: rgba(154, 167, 199, 0.18);
+      --accent: #ff7a59;
+      --accent-2: #4cc9f0;
+      --good: #35c46b;
+      --warn: #f0b429;
+      --bad: #ef4444;
+      --shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(76, 201, 240, 0.18), transparent 28%),
+        radial-gradient(circle at top right, rgba(255, 122, 89, 0.14), transparent 30%),
+        linear-gradient(180deg, #09101d 0%, #0b1020 45%, #0e1425 100%);
+      overflow: hidden;
+    }
+
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    /* --- Header --- */
+    .header {
+      padding: 18px 26px 14px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(17, 24, 45, 0.94), rgba(17, 24, 45, 0.72));
+      backdrop-filter: blur(12px);
+    }
+    .header h1 { font-size: 24px; letter-spacing: 0.02em; margin-bottom: 4px; }
+    .header p { color: var(--muted); font-size: 13px; }
+
+    /* --- Workspace tabs --- */
+    .ws-bar { display: flex; align-items: stretch; min-height: 46px; border-bottom: 1px solid var(--line); background: rgba(17, 24, 45, 0.72); }
+    .ws-tabs { display: flex; gap: 8px; padding: 8px 12px; overflow-x: auto; flex: 1; scrollbar-width: none; }
+    .ws-tabs::-webkit-scrollbar { display: none; }
+    .ws-tab, .ws-add { border: 1px solid var(--line); background: rgba(24, 34, 59, 0.72); color: var(--muted); border-radius: 999px; padding: 0 14px; height: 30px; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; white-space: nowrap; transition: 160ms ease; user-select: none; }
+    .ws-tab:hover, .ws-add:hover { color: var(--text); border-color: rgba(76, 201, 240, 0.4); }
+    .ws-tab.active { color: var(--text); background: linear-gradient(135deg, rgba(255, 122, 89, 0.18), rgba(76, 201, 240, 0.18)); border-color: rgba(255, 122, 89, 0.45); }
+    .ws-count { color: inherit; opacity: 0.76; font-size: 12px; }
+    .ws-close { color: inherit; opacity: 0.6; font-weight: 700; }
+    .ws-close:hover { opacity: 1; color: #fff; }
+    .ws-add { margin: 8px 12px 8px 0; justify-content: center; min-width: 36px; }
+
+    /* --- URL bar --- */
+    .url-bar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(11, 16, 32, 0.7), rgba(11, 16, 32, 0.5));
+    }
+    .url-bar-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-2); white-space: nowrap; }
+    .url-input {
+      flex: 1; height: 38px; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(8, 12, 24, 0.8);
+      color: var(--text); padding: 0 14px; outline: none; font-size: 14px;
+    }
+    .url-input:focus { border-color: rgba(76, 201, 240, 0.55); }
+    .url-input::placeholder { color: rgba(154, 167, 199, 0.5); }
+    .url-active { border-color: rgba(76, 201, 240, 0.6) !important; background: rgba(76, 201, 240, 0.06) !important; }
+    .url-save-btn { height: 38px; padding: 0 14px; font-size: 13px; }
+    .url-clear-btn {
+      background: none; border: none; color: var(--muted); cursor: pointer;
+      font-size: 18px; font-weight: 700; padding: 0 4px; opacity: 0.6;
+    }
+    .url-clear-btn:hover { opacity: 1; color: var(--text); }
+
+    /* --- Quick links --- */
+    .quick-links {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 24px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(11, 16, 32, 0.35);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .quick-links::-webkit-scrollbar { display: none; }
+    .quick-links:empty { display: none; }
+    .ql-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); white-space: nowrap; }
+    .ql-chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 999px; cursor: pointer;
+      border: 1px solid var(--line); background: rgba(24, 34, 59, 0.72);
+      color: var(--muted); font-size: 12px; font-weight: 600;
+      white-space: nowrap; transition: 160ms ease; user-select: none;
+    }
+    .ql-chip:hover { color: var(--text); border-color: rgba(76, 201, 240, 0.4); }
+    .ql-chip.active { color: var(--text); background: rgba(76, 201, 240, 0.14); border-color: rgba(76, 201, 240, 0.55); }
+    .ql-chip-del { font-size: 14px; opacity: 0.5; font-weight: 700; }
+    .ql-chip-del:hover { opacity: 1; color: var(--bad); }
+
+    /* --- Toolbar --- */
+    .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 24px; border-bottom: 1px solid var(--line); background: rgba(11, 16, 32, 0.52); flex-wrap: wrap; }
+    .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    .search-input, .modal-box input {
+      width: 240px; max-width: 100%; height: 36px; border-radius: 10px;
+      border: 1px solid var(--line); background: rgba(8, 12, 24, 0.8);
+      color: var(--text); padding: 0 12px; outline: none; font-size: 13px;
+    }
+    .search-input:focus, .modal-box input:focus { border-color: rgba(76, 201, 240, 0.55); }
+
+    .btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: rgba(24, 34, 59, 0.82); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; transition: 160ms ease; }
+    .btn:hover:not(:disabled) { border-color: rgba(76, 201, 240, 0.45); transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.45; cursor: default; }
+    .btn-primary { background: linear-gradient(135deg, #ff7a59, #ff9b6f); color: #09101d; border-color: rgba(255, 122, 89, 0.9); }
+    .btn-secondary { background: linear-gradient(135deg, rgba(76, 201, 240, 0.18), rgba(76, 201, 240, 0.28)); }
+    .btn-danger { background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.32); }
+    .btn-group { display: inline-flex; gap: 6px; }
+
+    /* --- Main content --- */
+    .main { flex: 1; overflow: auto; padding: 18px 24px 30px; }
+
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 18px; }
+    .stat { background: linear-gradient(180deg, rgba(24, 34, 59, 0.92), rgba(17, 24, 45, 0.92)); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px; box-shadow: var(--shadow); }
+    .stat-label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .stat-value { margin-top: 6px; font-size: 22px; font-weight: 700; }
+    .stat-value.url-hint { font-size: 13px; color: var(--accent-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .profile-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+    .profile-card { background: linear-gradient(180deg, rgba(17, 24, 45, 0.98), rgba(13, 19, 36, 0.96)); border: 1px solid var(--line); border-radius: 18px; padding: 14px; cursor: pointer; transition: 160ms ease; box-shadow: var(--shadow); }
+    .profile-card:hover { transform: translateY(-2px); border-color: rgba(76, 201, 240, 0.32); }
+    .profile-card.selected { border-color: rgba(255, 122, 89, 0.72); box-shadow: 0 20px 60px rgba(255, 122, 89, 0.16); }
+    .profile-card.running { border-color: rgba(53, 196, 107, 0.5); }
+
+    .card-top { display: flex; align-items: center; gap: 12px; }
+    .avatar { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 700; color: #09101d; flex-shrink: 0; overflow: hidden; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .av-0 { background: linear-gradient(135deg, #ff7a59, #f0b429); }
+    .av-1 { background: linear-gradient(135deg, #4cc9f0, #4895ef); }
+    .av-2 { background: linear-gradient(135deg, #35c46b, #9be15d); }
+    .av-3 { background: linear-gradient(135deg, #f72585, #ff99c8); }
+    .av-4 { background: linear-gradient(135deg, #ffd166, #ff9f1c); }
+    .av-5 { background: linear-gradient(135deg, #90f1ef, #4cc9f0); }
+    .av-6 { background: linear-gradient(135deg, #b8f2e6, #35c46b); }
+    .av-7 { background: linear-gradient(135deg, #f8ad9d, #ff7a59); }
+
+    .profile-main { min-width: 0; flex: 1; }
+    .profile-name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-email, .profile-meta { margin-top: 3px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .check { width: 22px; height: 22px; border-radius: 8px; border: 1px solid rgba(154, 167, 199, 0.36); background: rgba(8, 12, 24, 0.7); flex-shrink: 0; position: relative; }
+    .profile-card.selected .check { background: var(--accent); border-color: var(--accent); }
+    .profile-card.selected .check::after { content: '\2713'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #09101d; font-weight: 700; font-size: 14px; }
+
+    .card-footer { margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border: 1px solid transparent; }
+    .badge::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .badge.running { color: var(--good); background: rgba(53, 196, 107, 0.12); border-color: rgba(53, 196, 107, 0.28); }
+    .badge.stopped { color: var(--muted); background: rgba(154, 167, 199, 0.08); border-color: rgba(154, 167, 199, 0.2); }
+
+    .small-link { background: transparent; border: 0; color: var(--accent-2); cursor: pointer; font-size: 12px; font-weight: 700; }
+    .small-link:disabled { opacity: 0.4; cursor: default; }
+
+    .empty-state { padding: 50px 20px; text-align: center; color: var(--muted); border: 1px dashed rgba(154, 167, 199, 0.24); border-radius: 18px; background: rgba(17, 24, 45, 0.46); }
+
+    .emails-hidden .profile-email { display: none; }
+    .btn-toggle-email { font-size: 13px; gap: 5px; display: inline-flex; align-items: center; }
+    .btn-toggle-email .eye-icon { font-size: 15px; line-height: 1; }
+
+    /* --- Modal --- */
+    .modal-bg { position: fixed; inset: 0; background: rgba(4, 8, 18, 0.78); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100; }
+    .modal-bg.open { display: flex; }
+    .modal-box { width: min(100%, 380px); background: linear-gradient(180deg, rgba(24, 34, 59, 1), rgba(17, 24, 45, 1)); border: 1px solid var(--line); border-radius: 18px; padding: 18px; box-shadow: var(--shadow); }
+    .modal-box h3 { margin-bottom: 10px; }
+    .modal-box p { color: var(--muted); font-size: 13px; margin-bottom: 14px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+    /* --- Toast --- */
+    .toast { position: fixed; right: 18px; bottom: 18px; padding: 12px 16px; border-radius: 12px; background: rgba(17, 24, 45, 0.96); border: 1px solid var(--line); box-shadow: var(--shadow); transform: translateY(80px); opacity: 0; transition: 180ms ease; z-index: 200; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.warn { border-color: rgba(240, 180, 41, 0.34); }
+    .toast.err { border-color: rgba(239, 68, 68, 0.34); }
+
+    @media (max-width: 720px) {
+      .header, .toolbar, .main, .url-bar, .quick-links { padding-left: 16px; padding-right: 16px; }
+      .search-input { width: 100%; }
+      .toolbar-left, .toolbar-right { width: 100%; }
+      .toolbar-right .btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="header">
+      <h1>Chrome Profile Manager</h1>
+      <p>Paste a link, select your profiles, and launch them all tiled side-by-side.</p>
+    </div>
+
+    <div class="ws-bar">
+      <div class="ws-tabs" id="wsTabs"></div>
+      <div class="ws-add" id="wsAdd" title="Create workspace">+</div>
+    </div>
+
+    <div class="url-bar">
+      <div class="url-bar-label">Open URL</div>
+      <input class="url-input" id="urlInput" type="text" placeholder="Paste a link  (e.g. twitter.com, youtube.com)  or leave empty for new tab" spellcheck="false">
+      <button class="url-clear-btn" id="urlClear" title="Clear URL">&times;</button>
+      <button class="btn btn-secondary url-save-btn" id="urlSaveBtn">Save Link</button>
+    </div>
+    <div class="quick-links" id="quickLinks"></div>
+
+    <div class="toolbar" id="toolbar"></div>
+    <div class="main" id="main"></div>
+  </div>
+
+  <div class="modal-bg" id="modal">
+    <div class="modal-box">
+      <h3 id="modalTitle">New Workspace</h3>
+      <p id="modalCopy">Save the current profile selection as a workspace.</p>
+      <input type="text" id="modalInput" placeholder="Workspace name">
+      <div class="modal-actions">
+        <button class="btn" id="modalCancel">Cancel</button>
+        <button class="btn btn-secondary" id="modalOk">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let profiles = [];
+    let workspaces = [];
+    let customLinks = [];
+    let activeWorkspace = -1;
+    let selectedDirs = new Set();
+    let searchQuery = '';
+    let runningByDir = new Map();
+    let shiftAnchor = null;
+    let modalHandler = null;
+    let emailsHidden = localStorage.getItem('hideEmails') === '1';
+
+    function safeArray(v) { return Array.isArray(v) ? v : []; }
+
+    function normalizeWorkspace(v) {
+      return { name: v?.name || 'Unnamed', profileDirs: safeArray(v?.profileDirs).filter(Boolean), gridCols: Number.isInteger(v?.gridCols) ? v.gridCols : 2 };
+    }
+
+    function getActiveUrl() {
+      const v = document.getElementById('urlInput').value.trim();
+      if (!v) return '';
+      if (!v.startsWith('http://') && !v.startsWith('https://')) return 'https://' + v;
+      return v;
+    }
+
+    function getWorkspaceProfiles() {
+      if (activeWorkspace < 0) return profiles;
+      const ws = normalizeWorkspace(workspaces[activeWorkspace]);
+      return ws.profileDirs.map(d => profiles.find(p => p.directory === d)).filter(Boolean);
+    }
+
+    function matchesSearch(p) {
+      if (!searchQuery) return true;
+      const q = searchQuery.toLowerCase();
+      return [p.name, p.email, p.gaiaName, p.directory].some(v => (v || '').toLowerCase().includes(q));
+    }
+
+    function getVisibleProfiles() { return getWorkspaceProfiles().filter(matchesSearch); }
+
+    function getRecommendedCols(n) {
+      if (n <= 1) return 1; if (n <= 3) return n; if (n <= 4) return 2; if (n <= 9) return 3; return 4;
+    }
+
+    function setRunningStatuses(statuses) {
+      runningByDir = new Map();
+      safeArray(statuses).forEach(s => runningByDir.set(s.profileDir, s));
+      renderContent(); renderToolbar();
+    }
+
+    async function init() {
+      if (!window.api) { document.getElementById('main').innerHTML = '<div class="empty-state">Electron preload API is not available.</div>'; return; }
+      profiles = safeArray(await window.api.getProfiles());
+      workspaces = safeArray(await window.api.getWorkspaces()).map(normalizeWorkspace);
+      customLinks = safeArray(await window.api.getLinks());
+      setRunningStatuses(await window.api.getRunningStatuses());
+      window.api.onRunningStatusChanged(setRunningStatuses);
+      window.api.onProfilesChanged((newProfiles) => {
+        profiles = safeArray(newProfiles);
+        renderAll();
+      });
+      renderAll();
+    }
+
+    async function saveWorkspacesData() { await window.api.saveWorkspaces(workspaces); }
+
+    function renderAll() { renderTabs(); renderToolbar(); renderContent(); renderQuickLinks(); }
+
+    function renderTabs() {
+      const t = [];
+      t.push(`<div class="ws-tab ${activeWorkspace === -1 ? 'active' : ''}" onclick="switchWorkspace(-1)">All Profiles <span class="ws-count">${profiles.length}</span></div>`);
+      workspaces.forEach((ws, i) => {
+        t.push(`<div class="ws-tab ${activeWorkspace === i ? 'active' : ''}" onclick="switchWorkspace(${i})">${escapeHtml(ws.name)} <span class="ws-count">${ws.profileDirs.length}</span><span class="ws-close" onclick="event.stopPropagation(); removeWorkspace(${i})">&times;</span></div>`);
+      });
+      document.getElementById('wsTabs').innerHTML = t.join('');
+    }
+
+    function renderQuickLinks() {
+      const c = document.getElementById('quickLinks');
+      if (customLinks.length === 0) { c.innerHTML = ''; return; }
+      const activeUrl = getActiveUrl();
+      c.innerHTML = `<div class="ql-label">Quick Links</div>` + customLinks.map((lk, i) =>
+        `<div class="ql-chip ${activeUrl === lk.url ? 'active' : ''}" onclick="pickQuickLink(${i})">${escapeHtml(lk.name)}<span class="ql-chip-del" onclick="event.stopPropagation(); removeLink(${i})">&times;</span></div>`
+      ).join('');
+    }
+
+    function renderToolbar() {
+      const runningCount = Array.from(runningByDir.values()).filter(s => s.running).length;
+      const ws = activeWorkspace >= 0 ? normalizeWorkspace(workspaces[activeWorkspace]) : null;
+      const launchCount = activeWorkspace === -1 ? selectedDirs.size : (ws ? ws.profileDirs.length : 0);
+
+      document.getElementById('toolbar').innerHTML = `
+        <div class="toolbar-left">
+          <input class="search-input" type="text" value="${escapeAttr(searchQuery)}" placeholder="Search profiles" oninput="setSearch(this.value)">
+          <button class="btn btn-toggle-email" onclick="toggleEmails()" title="${emailsHidden ? 'Show emails' : 'Hide emails'}"><span class="eye-icon">${emailsHidden ? '🙈' : '👁'}</span>${emailsHidden ? 'Show Email' : 'Hide Email'}</button>
+          <button class="btn" onclick="selectVisible()">Select All</button>
+          <button class="btn" onclick="clearSelection()">Clear</button>
+          ${ws ? `<div class="btn-group"><button class="btn" onclick="setGrid(${Math.max(1, ws.gridCols - 1)})">Cols -</button><button class="btn" onclick="setGrid(${Math.min(6, ws.gridCols + 1)})">Cols +</button></div>` : ''}
+        </div>
+        <div class="toolbar-right">
+          <button class="btn btn-secondary" onclick="createWorkspace()" ${selectedDirs.size === 0 ? 'disabled' : ''}>Save Workspace (${selectedDirs.size})</button>
+          <button class="btn btn-primary" onclick="launchActive()" ${launchCount === 0 ? 'disabled' : ''}>Launch ${launchCount} Profile${launchCount === 1 ? '' : 's'}</button>
+          <button class="btn btn-secondary" onclick="retileWindows()" ${runningCount === 0 ? 'disabled' : ''}>Re-tile</button>
+          <button class="btn btn-danger" onclick="closeAll()" ${runningCount === 0 ? 'disabled' : ''}>Close All (${runningCount})</button>
+        </div>
+      `;
+    }
+
+    function renderContent() {
+      const vis = getVisibleProfiles();
+      const ws = activeWorkspace >= 0 ? normalizeWorkspace(workspaces[activeWorkspace]) : null;
+      const runningCount = Array.from(runningByDir.values()).filter(s => s.running).length;
+      const url = getActiveUrl();
+
+      const summary = `<div class="summary">
+        <div class="stat"><div class="stat-label">Profiles</div><div class="stat-value">${vis.length}</div></div>
+        <div class="stat"><div class="stat-label">Selected</div><div class="stat-value">${activeWorkspace === -1 ? selectedDirs.size : (ws ? ws.profileDirs.length : 0)}</div></div>
+        <div class="stat"><div class="stat-label">Running</div><div class="stat-value">${runningCount}</div></div>
+        <div class="stat"><div class="stat-label">Open URL</div><div class="stat-value url-hint">${url ? escapeHtml(url) : 'New Tab'}</div></div>
+      </div>`;
+
+      if (profiles.length === 0) { document.getElementById('main').innerHTML = `${summary}<div class="empty-state">No Chrome profiles detected.</div>`; return; }
+      if (vis.length === 0) { document.getElementById('main').innerHTML = `${summary}<div class="empty-state">${ws ? 'No profiles match in this workspace.' : 'No profiles match.'}</div>`; return; }
+
+      const cards = vis.map((p, idx) => {
+        const running = runningByDir.get(p.directory)?.running;
+        const selected = selectedDirs.has(p.directory) || (ws && ws.profileDirs.includes(p.directory));
+        const wsNames = workspaces.filter(w => w.profileDirs.includes(p.directory)).map(w => w.name);
+        const avIdx = profiles.indexOf(p) % 8;
+        const meta = wsNames.length ? `In ${wsNames.join(', ')}` : p.directory;
+        const avatarContent = p.hasPhoto
+          ? `<img src="chrome-profile://${encodeURIComponent(p.directory)}/photo" onerror="this.parentElement.innerHTML='${escapeHtml((p.name || '?').charAt(0).toUpperCase())}';">`
+          : escapeHtml((p.name || '?').charAt(0).toUpperCase());
+        return `
+          <div class="profile-card ${selected ? 'selected' : ''} ${running ? 'running' : ''}" onclick="toggleProfile('${escapeJs(p.directory)}', ${idx}, event)">
+            <div class="card-top">
+              <div class="avatar av-${avIdx}">${avatarContent}</div>
+              <div class="profile-main">
+                <div class="profile-name">${escapeHtml(p.name || p.directory)}</div>
+                <div class="profile-email">${escapeHtml(p.email || p.gaiaName || 'No email')}</div>
+                <div class="profile-meta">${escapeHtml(meta)}</div>
+              </div>
+              <div class="check"></div>
+            </div>
+            <div class="card-footer">
+              <span class="badge ${running ? 'running' : 'stopped'}">${running ? 'Running' : 'Stopped'}</span>
+              <button class="small-link" onclick="event.stopPropagation(); closeProfile('${escapeJs(p.directory)}')" ${running ? '' : 'disabled'}>Close</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      document.getElementById('main').innerHTML = `${summary}<div class="profile-grid${emailsHidden ? ' emails-hidden' : ''}">${cards}</div>`;
+    }
+
+    // --- Actions ---
+    function switchWorkspace(i) { activeWorkspace = i; selectedDirs.clear(); shiftAnchor = null; renderAll(); }
+    function setSearch(v) { searchQuery = v; renderContent(); }
+    function toggleEmails() {
+      emailsHidden = !emailsHidden;
+      localStorage.setItem('hideEmails', emailsHidden ? '1' : '0');
+      renderToolbar();
+      renderContent();
+    }
+    function clearSelection() { if (activeWorkspace !== -1) activeWorkspace = -1; selectedDirs.clear(); shiftAnchor = null; renderAll(); }
+    function selectVisible() { if (activeWorkspace !== -1) activeWorkspace = -1; getVisibleProfiles().forEach(p => selectedDirs.add(p.directory)); renderAll(); }
+
+    function toggleProfile(dir, visIdx, event) {
+      if (activeWorkspace !== -1) return;
+      const vis = getVisibleProfiles();
+      if (event.shiftKey && shiftAnchor !== null) {
+        const s = Math.min(shiftAnchor, visIdx), e = Math.max(shiftAnchor, visIdx);
+        for (let i = s; i <= e; i++) selectedDirs.add(vis[i].directory);
+      } else if (selectedDirs.has(dir)) { selectedDirs.delete(dir); shiftAnchor = visIdx; }
+      else { selectedDirs.add(dir); shiftAnchor = visIdx; }
+      renderAll();
+    }
+
+    async function createWorkspace() {
+      if (selectedDirs.size === 0) { toast('Select profiles first.', 'warn'); return; }
+      openModal('Create Workspace', 'Save the selected profiles as a named workspace.', async (name) => {
+        workspaces.push({ name, profileDirs: Array.from(selectedDirs), gridCols: getRecommendedCols(selectedDirs.size) });
+        selectedDirs.clear(); activeWorkspace = workspaces.length - 1;
+        await saveWorkspacesData(); renderAll(); toast(`Workspace "${name}" created.`);
+      });
+    }
+
+    async function removeWorkspace(i) {
+      workspaces.splice(i, 1);
+      if (activeWorkspace >= workspaces.length) activeWorkspace = workspaces.length - 1;
+      await saveWorkspacesData(); renderAll();
+    }
+
+    async function setGrid(n) {
+      if (activeWorkspace < 0 || !workspaces[activeWorkspace]) return;
+      workspaces[activeWorkspace].gridCols = Math.max(1, Math.min(6, n));
+      await saveWorkspacesData(); renderAll();
+    }
+
+    async function launchActive() {
+      const ws = activeWorkspace >= 0 ? normalizeWorkspace(workspaces[activeWorkspace]) : null;
+      const dirs = ws ? ws.profileDirs : Array.from(selectedDirs);
+      const cols = ws ? ws.gridCols : getRecommendedCols(dirs.length);
+      if (dirs.length === 0) { toast('No profiles selected.', 'warn'); return; }
+
+      const url = getActiveUrl();
+      const result = await window.api.launchWorkspace(dirs, cols, url || undefined);
+      if (!result?.ok) { toast(result?.error || 'Failed to launch.', 'err'); return; }
+      setRunningStatuses(result.statuses);
+      const msg = url
+        ? `Launched ${result.launched.length} profile${result.launched.length === 1 ? '' : 's'} with ${url}`
+        : `Launched ${result.launched.length} profile${result.launched.length === 1 ? '' : 's'}.`;
+      toast(msg);
+    }
+
+    async function retileWindows() {
+      const ws = activeWorkspace >= 0 ? normalizeWorkspace(workspaces[activeWorkspace]) : null;
+      const result = await window.api.retileWindows(ws ? ws.gridCols : undefined);
+      if (!result?.ok) { toast(result?.error || 'No running windows.', 'warn'); return; }
+      toast(`Re-tiled ${result.count} window${result.count === 1 ? '' : 's'}.`);
+    }
+
+    async function closeAll() {
+      const result = await window.api.closeWorkspace();
+      setRunningStatuses(result?.statuses || []);
+      toast(result?.ok ? 'Closed all Chrome windows.' : 'Nothing to close.', result?.ok ? '' : 'warn');
+    }
+
+    async function closeProfile(dir) {
+      const result = await window.api.closeProfile(dir);
+      setRunningStatuses(result?.statuses || []);
+      if (!result?.ok) toast('Profile not managed.', 'warn');
+    }
+
+    // --- Quick Links ---
+    function pickQuickLink(i) {
+      const lk = customLinks[i];
+      if (!lk) return;
+      document.getElementById('urlInput').value = lk.url;
+      renderQuickLinks();
+      renderContent();
+    }
+
+    async function saveCurrentLink() {
+      const url = getActiveUrl();
+      if (!url) { toast('Enter a URL first.', 'warn'); return; }
+      if (customLinks.some(lk => lk.url === url)) { toast('Already saved.', 'warn'); return; }
+      let name;
+      try { name = new URL(url).hostname.replace(/^www\./, ''); } catch { name = url; }
+      customLinks.push({ name, url });
+      await window.api.saveLinks(customLinks);
+      renderQuickLinks();
+      toast(`Saved "${name}" to quick links.`);
+    }
+
+    async function removeLink(i) {
+      customLinks.splice(i, 1);
+      await window.api.saveLinks(customLinks);
+      renderQuickLinks();
+    }
+
+    // --- URL bar events ---
+    document.getElementById('urlSaveBtn').addEventListener('click', saveCurrentLink);
+    document.getElementById('urlClear').addEventListener('click', () => {
+      document.getElementById('urlInput').value = '';
+      renderQuickLinks(); renderContent();
+    });
+    document.getElementById('urlInput').addEventListener('input', () => { renderQuickLinks(); renderContent(); });
+    document.getElementById('urlInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); launchActive(); }
+    });
+
+    // --- Modal ---
+    function openModal(title, copy, handler) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('modalCopy').textContent = copy;
+      document.getElementById('modalInput').value = '';
+      modalHandler = handler;
+      document.getElementById('modal').classList.add('open');
+      setTimeout(() => document.getElementById('modalInput').focus(), 20);
+    }
+    function closeModal() { modalHandler = null; document.getElementById('modal').classList.remove('open'); }
+
+    document.getElementById('wsAdd').addEventListener('click', createWorkspace);
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    document.getElementById('modalOk').addEventListener('click', async () => {
+      const v = document.getElementById('modalInput').value.trim();
+      if (!v || !modalHandler) return;
+      const h = modalHandler; closeModal(); await h(v);
+    });
+    document.getElementById('modalInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeModal();
+      if (e.key === 'Enter') document.getElementById('modalOk').click();
+    });
+
+    // --- Utilities ---
+    let toastTimer = null;
+    function toast(msg, type) {
+      const el = document.getElementById('toast');
+      el.textContent = msg; el.className = `toast show${type ? ` ${type}` : ''}`;
+      clearTimeout(toastTimer); toastTimer = setTimeout(() => { el.className = 'toast'; }, 2600);
+    }
+    function escapeHtml(v) { return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+    function escapeAttr(v) { return escapeHtml(v); }
+    function escapeJs(v) { return String(v).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'\\"').replace(/`/g,'\\`').replace(/\n/g,'\\n').replace(/\r/g,'\\r'); }
+
+    init().catch((err) => {
+      console.error('Init failed:', err);
+      document.getElementById('main').innerHTML = '<div class="empty-state">Failed to load. Please restart the application.<br><small>' + escapeHtml(String(err)) + '</small></div>';
+    });
+  </script>
+</body>
+</html>

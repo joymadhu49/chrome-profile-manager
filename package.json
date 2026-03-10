@@ -1,0 +1,47 @@
+{
+  "name": "chrome-profile-manager",
+  "version": "1.0.0",
+  "description": "Manage and launch multiple Chrome profiles easily",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win portable",
+    "build-installer": "electron-builder --win nsis"
+  },
+  "author": "Joy Madhu",
+  "license": "ISC",
+  "type": "commonjs",
+  "build": {
+    "appId": "com.joymadhu.chrome-profile-manager",
+    "productName": "Chrome Profile Manager",
+    "directories": {
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ],
+      "icon": "build/icon.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "!.runtime-data",
+      "!.session-data"
+    ],
+    "portable": {
+      "artifactName": "ChromeProfileManager.exe"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "artifactName": "Chrome Profile Manager Setup ${version}.exe"
+    }
+  },
+  "devDependencies": {
+    "electron": "^40.8.0",
+    "electron-builder": "^26.8.1"
+  }
+}
